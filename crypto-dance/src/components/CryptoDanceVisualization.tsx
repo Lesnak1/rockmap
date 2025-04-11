@@ -309,16 +309,20 @@ const CryptoDanceVisualization = () => {
 
   // Generate a color based on price change, beat, and frequency
   const getColor = (crypto: CryptoData, freqData: number[], beatIntensity: number) => {
-    // Randomly select a frequency band for each block
-    const freqIndex = (Math.abs(crypto.symbol.charCodeAt(0)) + Math.floor(Math.random() * freqData.length)) % freqData.length;
+    // Deterministic mapping to frequency bands based on crypto symbol
+    const freqIndex = Math.abs(crypto.symbol.charCodeAt(0)) % freqData.length;
     const freqValue = freqData[freqIndex] || 0;
-
-    // Use frequency and beat to determine color
-    const intensity = Math.max(freqValue, beatIntensity);
-    const redValue = Math.floor(255 * (1 - intensity));
-    const greenValue = Math.floor(255 * intensity);
-
-    return `rgb(${redValue}, ${greenValue}, 0)`;
+    
+    // Binary color selection based on frequency value
+    if (freqValue > 0.5) {
+      // High frequency energy - use green
+      const intensity = Math.floor(150 + (freqValue * 105));
+      return `rgb(0, ${intensity}, 0)`;
+    } else {
+      // Low frequency energy - use red
+      const intensity = Math.floor(150 + ((1 - freqValue) * 105));
+      return `rgb(${intensity}, 0, 0)`;
+    }
   };
 
   return (
@@ -355,20 +359,19 @@ const CryptoDanceVisualization = () => {
           <div className="col-span-3">
             <div className="font-bold text-white text-xs mb-1 pl-1">Bitcoin & Derivatives</div>
             <div className="h-full relative">
-              {cryptoData.filter(c => c.section === 'bitcoin').map((crypto, index) => {
-                const scale = crypto.animScale || 1;
-                const rotate = crypto.animRotate || 0;
+              {cryptoData.filter(c => c.section === 'bitcoin').map((crypto) => {
+                // Calculate color once
+                const color = getColor(crypto, frequencyData, beatIntensity);
                 
                 return (
                   <div 
                     key={crypto.symbol}
                     className="absolute top-0 left-0 right-0 bottom-0 flex flex-col items-center justify-center rounded-md overflow-hidden text-center"
                     style={{
-                      backgroundColor: getColor(crypto, frequencyData, beatIntensity),
-                      transform: `rotate(${rotate}deg) scale(${1 + (beatIntensity * 0.1)})`,
-                      transition: 'all 0.3s ease-in-out',
+                      backgroundColor: color,
+                      transition: 'background-color 0.1s ease-out', 
                       opacity: 0.8 + (beatIntensity * 0.2),
-                      boxShadow: `0 0 ${10 * beatIntensity}px ${getColor(crypto, frequencyData, beatIntensity)}`,
+                      boxShadow: `0 0 ${10 * beatIntensity}px ${color}`,
                     }}
                   >
                     <div className="text-white font-bold text-6xl">{crypto.symbol}</div>
