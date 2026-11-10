@@ -109,6 +109,7 @@ const CryptoDanceVisualization = () => {
 
   // State for animation even without audio
   const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(false);
   const audioContext = useRef<AudioContext | null>(null);
   const analyser = useRef<AnalyserNode | null>(null);
   const dataArray = useRef<Uint8Array | null>(null);
@@ -231,11 +232,12 @@ const CryptoDanceVisualization = () => {
   }, []);
 
   // Set up audio connections and start analyzing
-  const startAudio = () => {
-    if (isPlaying) return;
+  const startAudio = (force = false) => {
+    if (isPlayingRef.current && !force) return;
 
     // If no custom audio element is uploaded, run in simulated visualization mode
     if (!audioElement.current) {
+      isPlayingRef.current = true;
       setIsPlaying(true);
       return;
     }
@@ -246,7 +248,7 @@ const CryptoDanceVisualization = () => {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         audioContext.current = new AudioContextClass();
         analyser.current = audioContext.current.createAnalyser();
-        analyser.current.fftSize = 256;
+        analyser.current.fftSize = 64;
         const bufferLength = analyser.current.frequencyBinCount;
         dataArray.current = new Uint8Array(bufferLength);
       }
@@ -268,21 +270,25 @@ const CryptoDanceVisualization = () => {
       audioElement.current.play().catch(error => {
         console.log("Audio play error:", error);
         // Fall back to simulated beats
+        isPlayingRef.current = true;
         setIsPlaying(true);
       });
 
+      isPlayingRef.current = true;
       setIsPlaying(true);
       analyzeAudio();
     } catch (error) {
       console.log("Audio setup error:", error);
       // Fall back to simulated beats
+      isPlayingRef.current = true;
       setIsPlaying(true);
     }
   };
 
   // Toggle audio playback
   const toggleAudio = () => {
-    if (isPlaying) {
+    if (isPlayingRef.current) {
+      isPlayingRef.current = false;
       setIsPlaying(false);
       if (audioElement.current) {
         audioElement.current.pause();
@@ -318,6 +324,7 @@ const CryptoDanceVisualization = () => {
       const url = URL.createObjectURL(file);
       audioElement.current = new Audio(url);
       audioElement.current.onended = () => {
+        isPlayingRef.current = false;
         setIsPlaying(false);
         if (animationFrameId.current) {
           cancelAnimationFrame(animationFrameId.current);
@@ -325,12 +332,7 @@ const CryptoDanceVisualization = () => {
       };
 
       // Automatically start visualization with the newly uploaded track
-      if (isPlaying) {
-        setIsPlaying(false);
-      }
-      setTimeout(() => {
-        startAudio();
-      }, 50);
+      startAudio(true);
     }
   };
 
